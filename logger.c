@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <dlfcn.h>
 #include <syslog.h>
+#include <sys/statvfs.h> // Required for disk space check
 
 extern char *getlogin (void);
 
@@ -33,7 +34,11 @@ Useful is theres alot of scripts/cron's running.
 */
 #define PROTECT_LOGGER 0
 
-
+/*
+ *  Define the minimum amount of disk space (in KB) required to write logs.
+ *  If the disk has less space than this, logging will be skipped.
+ */
+ #define MIN_DISK_SPACE_KB 1024  // 1MB
 
 /* MAX
  * maximum size of any argument.  if set to 0, logger will ensure that all
@@ -55,6 +60,19 @@ inline void logger(const char *filename, char **argv) {
 	register int i, spos=0;
    char *login;
    
+    // Check disk space before logging
+	struct statvfs vfs;
+	if (statvfs("/", &vfs) == 0) {
+		unsigned long available_space = (unsigned long)vfs.f_bavail * (unsigned long)vfs.f_frsize;
+		if (available_space / 1024 < MIN_DISK_SPACE_KB) {
+			// Disk space is too low, skip logging
+			return;
+		}
+	} else {
+		// Error getting disk space, skip logging to avoid crashes
+		return;
+	}
+	 
 	#if UID0_ONLY
 	if (getuid() != 0) 
 	   	return; 
