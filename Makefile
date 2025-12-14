@@ -1,7 +1,10 @@
-# Makefile for logger 
+# Makefile for logger
 
 CC = gcc
-LIBS  = -ldl
+LIBS = -ldl
+PREFIX ?= /usr/local
+LIBDIR ?= $(PREFIX)/lib
+DESTDIR ?=
 
 all: logger.so detect start
 
@@ -14,9 +17,21 @@ detect: detect.c std_libc.h
 start: start.c std_libc.h
 	$(CC) start.c -o start $(LIBS)
 
-install: all 
-	install -m 755 logger.so /lib/logger.so; \
-	./install.sh
+install: all
+	install -d $(DESTDIR)$(LIBDIR)
+	install -m 755 logger.so $(DESTDIR)$(LIBDIR)/logger.so
+	@if [ -z "$(DESTDIR)" ]; then \
+		LIBDIR=$(LIBDIR) ./install.sh; \
+	else \
+		echo "DESTDIR set, skipping ld.so.preload update"; \
+	fi
+
+uninstall:
+	rm -f $(DESTDIR)$(LIBDIR)/logger.so
+	@if [ -z "$(DESTDIR)" ] && [ -f /etc/ld.so.preload ]; then \
+		sed -i.bak '/logger\.so/d' /etc/ld.so.preload; \
+		echo "Removed logger.so from /etc/ld.so.preload"; \
+	fi
 
 std_libc.h: check_std_libc.sh
 	./check_std_libc.sh

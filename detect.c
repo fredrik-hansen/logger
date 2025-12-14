@@ -28,10 +28,17 @@
 
 int main(void) {
 	void *handle = dlopen(STD_LIBC_PATH, RTLD_LAZY);
-	//simple test to see if the execve in memory matches libc.so.6
+	if (handle == NULL) {
+		fprintf(stderr, "Failed to open %s: %s\n", STD_LIBC_PATH, dlerror());
+		return 1;
+	}
+
+	/* simple test to see if the execve in memory matches libc.so.6 */
 	if (dlsym(handle, "execve") != dlsym(RTLD_DEFAULT, "execve"))
 		printf("logger successfully loaded\n");
 	else
 		printf("logger NOT loaded\n");
+
+	dlclose(handle);
 	return 0;
 }
